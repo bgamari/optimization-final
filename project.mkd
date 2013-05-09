@@ -163,10 +163,11 @@ observation.
 ### Statement of problem
 
 We are given an observed correlation function $G(\tau)$. Given a set
-of diffusion times $\{\tau_{D_i}\}$ which we might expect to see in the
-system, we want to learn a set of component weights $\mathbf{a} \ge 0$ and auxiliary
-model parameters. We demand that our weight distribution maximizes
-entropy $S$ while satifying a constraint on $\chi^2$,
+of diffusion times $\{\tau_{D_i}\}$ which we might expect to see in
+the system, we want to learn a set of component weights $\mathbf{a}
+\ge 0$ and auxiliary model parameters. We demand that our weight
+distribution maximizes entropy $S$ while satifying an inequality
+constraint on $\chi^2$,
 
 \begin{align}
 & \max_{\mathbf{a}} \left[ -\sum_i a_i \log a_i \right] \\
@@ -180,21 +181,71 @@ We note that the weights $a$ are simply a prefactor in $G^*$. For
 conciseness, we define the quantities,
 
 \begin{align}
-\mathbf{\hat G^*}_i(\tau_j) & = \left(\frac{1}{1 + \tau / \tau_{D_i}}\right) \left(\frac{1}{1 + (r/l)^2 (\tau/\tau_{D_i})}\right) \left(\frac{1}{\sigma_j^2}\right) \\
-\hat G(\tau_j)   & = \frac{G(\tau_j)}{\sigma_j^2},
+\hat G^*_{ij} & = \left(\frac{1}{1 + \tau_j / \tau_{D_i}}\right) \left(\frac{1}{1 + (r/l)^2 (\tau_j/\tau_{D_i})}\right) \left(\frac{1}{\sigma_j^2}\right) \\
+\hat G_j   & = \frac{G(\tau_j)}{\sigma_j^2},
 \end{align}
 
 allowing us to write our constraint from Eq. \ref{Eq:ChiConstr} as,
 
 \begin{equation}
-\sum_j \left( \hat G(\tau_j) - \| \mathbf{a}^T \mathbf{\hat G^*}(\tau_j) \|_1 \right)^2 \le c
+\sum_j \left( \hat{G}_j - a^i \hat{G}^*_{ij} \right)^2 \le c. \label{Eq:ChiConstr2}
 \end{equation}
 
-By the triangle inequality,
+## Approaches
+
+Here we will examine several approaches for solving the above optimization problem,
+
+  * Skilling and Bryan's original MEM algorithm
+  * projected subgradient method
+  * mirror descent method
+  * logarithmic barrier method
+
+### Projected subgradient method
+
+To employ the projected subgradient method, we will first need a
+projection operator. Expanding the constraint from
+Eq. \ref{Eq:ChiConstr2},
 
 \begin{equation}
-\sum_j \frac{(G(\tau_j) - \mathbf{a}^T \mathbf{\hat G}(\tau_j))^2}{\sigma_j^2} \le c
+\sum_j \left( - 2 \hat{G}_j a^i \hat{G}^*_{ij} + (a^i \hat{G}^*_{ij})^2 \right) \le c - \sum_j \hat{G}_j^2.
 \end{equation}
+
+Further juggling terms,
+
+\begin{equation}
+a^i \sum_j -2 \hat{G}_j \hat{G}^*_{ij} + a^i a_k \sum_j (\hat{G}^*)_{ij} (\hat{G}^*)^{jk} \le c - \sum_j \hat{G}_j^2.
+\end{equation}
+
+or, rewriting,
+
+\begin{equation}
+a^i A_i + a^i a_k B_{ik} \le c - \sum_j \hat{G}_j^2.
+\end{equation}
+
+As expected, this is manifestly a quadratic constraint. We desire a
+projection operator $\mathcal{P}(\mathbf{a})$ which brings $\mathbf a$
+to a point on the surface quadric $\mathbf{a} B \mathbf{a} + \mathbf{a} A = c$. 
+One reasonable choice of projections would be to identify the point
+$\mathbf{a'}$ on this surface that minimizes $\left\Vert \mathbf{a} -
+\mathbf{a'} \right\Vert $. While this could be accomplished by the
+method of Lagrange multipliers, we'd like to avoid excess complexity
+in our projection. Instead, we prefer to use a direct line search in
+the direction of the gradient of our constraint. Again, for simplicity, we ensure only that the constraint is satisfied and make no attempt to ensure optimality (e.g., our projection is not ensured to be on the boundary of our space).
+
+which can be treated using second-order cone programming.
+
+By the reverse triangle inequality,
+
+\begin{equation*}
+\| x-y \| \ge \left| \| x \| - \| y \| \right| ,
+\end{equation*}
+
+we have,
+
+\begin{equation}
+a
+\end{equation}
+
 
 \appendix
 
