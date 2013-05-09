@@ -306,10 +306,10 @@ f(\mathbf{a}) = \sum_i \mathbf{a}_i \log \mathbf{a}_i + \mu \log \left[ \mathbf{
 ### A naive approach
 
 In addition to the formulation describe above, one can also envision
-an optimization program which puts $\chi^2$ and the entropy $S$ on
-an equal footing. In this case, one could construct an
-objective with a weight parameter $\beta$ to adjust the balance
-between these two terms,
+an optimization program which puts $\chi^2$ and the entropy $S$ on an
+equal footing. In this case, one could construct an objective with a
+weight parameter $\beta$ to adjust the balance between these two
+terms,
 
 \begin{equation*}
 a
@@ -320,7 +320,9 @@ a
 For our experiments we sampled a number of diffusivities from a two
 component log-normal mixture. We then computed values of the correlation function induced by these species at a number of logarithmically spaced time $\tau$s. To reproduce the imperfection of experimental data, small amplitude Gaussian noise was added to th
 
-## 
+# Results
+
+Hello world.
 
 \appendix
 
