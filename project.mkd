@@ -1,0 +1,201 @@
+% Maximum entropy techniques for fluorescence correlation spectroscopy
+% Ben Gamari
+% Optimization final project
+
+# Motivation
+
+Fluorescence correlation spectroscopy[@Magde1972] (or more correctly, fluorescence
+fluctuation correlation spectroscopy) is a analytic technique used for
+characterizing the static and dynamic behavior of molecular and
+macromolecular species. In an FCS experiment, the specimen of interest
+is labelled with a fluorescent molecule (a dye) and allowed to diffuse in
+solution. A small observation volume of this solution is illuminated
+by a confocal microscope. As molecules pass through this volume, their dyes are
+excited and their emissions are collected as time-tagged photon
+observations. This produces a fluorescence intensity timeseries
+$I(t)$. This timeseries can be decomposed into a steady state
+component $\bar I = \langle I \rangle$ and time dependent
+fluctuations, $\delta I(t)$,
+
+$$ I(t) = \bar I + \delta I(t). $$
+
+![Typical experimental setup for FCS experiment](fret-setup.pdf)
+
+We begin by examining the temporal autocorrelation of the fluctuation
+term, that is, the correlation between the intensity at time $t$ and a
+time $\tau$ in the future, $t+\tau$. This is given by, (up to
+normalization),
+
+\begin{equation}
+G(\tau) = \int dt~ \delta I(t)~ \delta I(t+\tau),
+\end{equation}
+
+one can draw conclusions about the characteristics of the
+system under study.
+
+In the most simple case, we are interested in the diffusivity $D$,
+which summarizes the diffusive characteristics of a normally diffusing
+particle. Intuitively, $D$ captures the expected displacement in a
+given time.
+
+Consider a diffusing particle whose position is known to be
+$\mathbf{r}_0$ at time $t=0$. Equivalently, we say that the
+probability over the particle's position is given by $P(\mathbf{r}
+\vert t=0) = \delta(\mathbf{r}_0 - \mathbf{r})$. The Dirac
+$\delta$ function can be taken to be a limit of Gaussians with
+vanishing variance as a function of time,
+
+\begin{equation}
+P(\mathbf{r} ~\vert~ t=0) = \lim_{\sigma \rightarrow \infty} \mathcal{N}(\mathbf{r}_0, \sigma^2)
+\end{equation}
+
+where $\mathcal{N}$ denotes the PDF of the normal distribution. 
+In light of this, we can view the diffusivity $D$ to be the rate of
+increase in the variance of our particle's position,
+
+\begin{equation}
+P(\mathbf{r} ~\vert~ t, \mathbf{r}(t=0) = \mathbf{r}_0) = \mathcal{N}(\mathbf{r}_0, D\, t)
+\end{equation}
+
+N.B. We have made a few implicit assumptions above; namely those characterizing 
+"normal diffusion". To show that this assumption of normality is valid, one would need to solve the diffusion equation with the relevant boundary conditions, which is beyond the scope of this paper. Nevertheless, in many systems of interest, in particular those
+exhibiting diffusion through sparsely connected spaces such as the
+interstitial spaces of a polymer, a network, or a porous material like
+sand, one finds anomalous diffusion, where the $\sigma^2$ is no longer
+a linear function of time but instead a power law.
+
+![A correlation function showing roughly single component normal diffusion. Note the systematically large residuals, likely due to unaccounted for photophysics.](2012-12-20-run_005-acorr-0.pdf)
+
+The analysis of a typical FCS experiment begins with the calculation
+of the correlation function which can be carried out by a number of
+methods[@Laurence2006, @Gamari2013, @Magatti2001].  This function can
+then be fit against any one of a variety of models, depending upon the
+dynamics expected in the data. In the most common case, one is looking
+exclusively for normal three-dimensional diffusion, characterized by
+correlations of the form,
+
+\begin{equation}
+G^*(\tau) = \frac{1}{N} \left(\frac{1}{1 + \tau / \tau_D}\right) \left(\frac{1}{1 + (r/l)^2 (\tau/\tau_D)}\right) \label{Eq:3dDiff}
+\end{equation}
+
+where $\tau_D$ is the characteristic diffusion time of the species,
+$r$ and $l$ are geometric parameters of the experimental apparatus,
+and $N$ is the expected number of labelled molecules in the
+observation (e.g. the concentration of the species in solution).
+
+The parameters $\tau_D$, $N$, $r$, and $l$ are typically learned by
+way of least-squares fit. Here we minimize $\chi^2$, a weighted average of the
+squared residual,
+
+$$ \chi^2 = \frac{1}{n} \sum_i \frac{(G^*(\tau_i) - G(\tau_i))^2}{\sigma_i^2} $$
+
+Where $\sigma$ is the standard error of the $G$ estimator. This quantity
+can be estimated under a number of different modelling
+assumptions[@Wohland1986, @Schatzel1990, @Schatzel1991, @Gamari2013, @Culbertson2007, @Sarrarian2003]. The
+most common treatment of the error is due to Koppel[@Koppel1974] and
+appeals to an assumption of temporal independence (an admittedly
+suspicous assumption for an experiment looking at temporal
+correlations).
+
+For reasons of convenience and ubiquity, the
+Levenburg-Marquadt[@Levenburg1944, @Marquadt1963]
+algorithm is typically used for performing this optimization.  While
+in many common cases the objective is convex, it is not difficult to
+find heterogeneous systems which give rise to more challenging
+problems. Recently our lab has been working to characterize a
+colloidal water/oil system. To better understand droplet size
+distribution, we use FCS to measure the diffusivity distribution
+of the colloid which is heterogeneous\footnote{and sadly dynamic, but we will
+brush this under the rug for now}.
+
+![A representative landscape of $\chi^2$ in the $\tau_D - \tau_F$ plane](simple-landscape.pdf)
+
+To write down the expected correlation found in such a system, we
+first consider the correlations $G_1$ and $G_2$ . The autocorrelation of a system
+consisting these two species will be,
+
+$$ G(\tau) = \int dt (\delta I_1(t) + \delta I_2(t)) (\delta I_1(t+\tau) + \delta I_2(t+\tau)) $$
+
+Expanding the product, we find four terms,
+
+$$ G(\tau) = \int dt \left[ \delta I_1(t)\: \delta I_1(t+\tau) + \delta I_1(t)\: \delta I_2(t+\tau) + \delta I_2(t)\: \delta I_1(t+\tau) + \delta I_2(t)\: \delta I_2(t+\tau) \right] $$
+
+We note that first note that the motions of the particles of the species 1
+are independent of those of species 2, therefore the two cross terms
+vanish. We are left with the weighted sum of the two single-species
+autocorrelations,
+
+$$ G(\tau) = G_1(\tau) + G_2(\tau), $$
+
+Or in the case of the diffusion model given in Eq. \ref{Eq:3dDiff},
+
+$$ G(\tau) = \sum_i a_i \left(\frac{1}{1 + \tau / \tau_{D_i}}\right) \left(\frac{1}{1 + (r/l)^2 (\tau/\tau_{D_i})}\right) $$
+
+Where $a_i$ are the relative abundances of the two species. In the
+common case of a continuuous spectrum of diffusivities we can write
+this sum as an integral, which for computational ease we can rewrite as a
+sum of appropriately many discrete contributions.
+
+## Maximum entropy approaches to modelling
+
+Such heterogeneous distributions present great difficulty for the
+optimization approach given above. Especially in the presence of
+finite data, a naive least squares fit will generally either fit only
+to the dominant species or fail to converge at all.
+
+In 2003 Sengupta, *et. al.* brought Skilling and Bryan's work on 
+image reconstruction to bear on this problem. Here, Skilling
+identifies the entropy of an image of intensities $f_i$,
+
+$$ S = -\sum_i P(f_i) \log P(f_i), $$
+
+as a unique criterion for selecting among models. Skilling appeals to
+the earlier work of Shore, positing that a maximum entropy model will
+avoid adding any correlations beyond those necessary for consistency
+with observations.
+
+Sengupta reformulated the FCS fitting problem as a constrained
+optimization, minimizing the entropy of the species' weights
+under a constraint on $\chi^2$. This attempts to maximize the
+non-informativeness of the inference while ensuring agreement with
+observation.
+
+### Statement of problem
+
+We are given an observed correlation function $G(\tau)$. Given a set
+of diffusion times $\{\tau_{D_i}\}$ which we might expect to see in the
+system, we want to learn a set of component weights $\mathbf{a} \ge 0$ and auxiliary
+model parameters. We demand that our weight distribution maximizes
+entropy $S$ while satifying a constraint on $\chi^2$,
+
+\begin{align}
+& \max_{\mathbf{a}} \left[ -\sum_i a_i \log a_i \right] \\
+\mathrm{such~ that~} 
+& \sum_i a_i = 1 \\
+& \sum_j \frac{(G(\tau_j) - G^*(\tau_j ~\vert~ \mathbf{a}))^2}{\sigma_j^2} \le c \label{Eq:ChiConstr}
+\end{align}
+
+for some value $c$ specifying the degree of misfit we are willing to accept.
+We note that the weights $a$ are simply a prefactor in $G^*$. For
+conciseness, we define the quantities,
+
+\begin{align}
+\mathbf{\hat G^*}_i(\tau_j) & = \left(\frac{1}{1 + \tau / \tau_{D_i}}\right) \left(\frac{1}{1 + (r/l)^2 (\tau/\tau_{D_i})}\right) \left(\frac{1}{\sigma_j^2}\right) \\
+\hat G(\tau_j)   & = \frac{G(\tau_j)}{\sigma_j^2},
+\end{align}
+
+allowing us to write our constraint from Eq. \ref{Eq:ChiConstr} as,
+
+\begin{equation}
+\sum_j \left( \hat G(\tau_j) - \| \mathbf{a}^T \mathbf{\hat G^*}(\tau_j) \|_1 \right)^2 \le c
+\end{equation}
+
+By the triangle inequality,
+
+\begin{equation}
+\sum_j \frac{(G(\tau_j) - \mathbf{a}^T \mathbf{\hat G}(\tau_j))^2}{\sigma_j^2} \le c
+\end{equation}
+
+\appendix
+
+## Bibliography
