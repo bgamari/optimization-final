@@ -64,7 +64,7 @@ interstitial spaces of a polymer, a network, or a porous material like
 sand, one finds anomalous diffusion, where the $\sigma^2$ is no longer
 a linear function of time but instead a power law.
 
-![A correlation function showing roughly single component normal diffusion. Note the systematically large residuals, likely due to unaccounted for photophysics.](2012-12-20-run_005-acorr-0.pdf)
+![A correlation function showing roughly single component normal diffusion. Note the systematically large residuals, likely due to unaccounted for photophysics. As the timescales of the dynamics seen in a correlation experiment span several orders of magnitude, it is typical to plot the function on a logarithmic abscissa.](2012-12-20-run_005-acorr-0.pdf)
 
 The analysis of a typical FCS experiment begins with the calculation
 of the correlation function which can be carried out by a number of
@@ -136,14 +136,14 @@ common case of a continuuous spectrum of diffusivities we can write
 this sum as an integral, which for computational ease we can rewrite as a
 sum of appropriately many discrete contributions.
 
-## Maximum entropy approaches to modelling
+# Maximum entropy approaches to modelling
 
 Such heterogeneous distributions present great difficulty for the
 optimization approach given above. Especially in the presence of
 finite data, a naive least squares fit will generally either fit only
 to the dominant species or fail to converge at all.
 
-In 2003 Sengupta, *et. al.* brought Skilling and Bryan's work on 
+In 2003, Sengupta *et. al.* brought Skilling and Bryan's work on 
 image reconstruction to bear on this problem. Here, Skilling
 identifies the entropy of an image of intensities $f_i$,
 
@@ -160,7 +160,7 @@ under a constraint on $\chi^2$. This attempts to maximize the
 non-informativeness of the inference while ensuring agreement with
 observation.
 
-### Statement of problem
+## Statement of problem
 
 We are given an observed correlation function $G(\tau)$. Given a set
 of diffusion times $\{\tau_{D_i}\}$ which we might expect to see in
@@ -177,15 +177,15 @@ constraint on $\chi^2$,
 \end{align}
 
 for some value $c$ specifying the degree of misfit we are willing to accept.
-We note that the weights $a$ are simply a prefactor in $G^*$. For
-conciseness, we define the quantities,
+We note that the weights $a$ are simply a prefactor in $G^*$. Consequently we can define 
+the quantities,
 
-\begin{align}
+\begin{align*}
 \hat G^*_{ij} & = \left(\frac{1}{1 + \tau_j / \tau_{D_i}}\right) \left(\frac{1}{1 + (r/l)^2 (\tau_j/\tau_{D_i})}\right) \left(\frac{1}{\sigma_j^2}\right) \\
-\hat G_j   & = \frac{G(\tau_j)}{\sigma_j^2},
-\end{align}
+\hat G_j      & = \frac{G(\tau_j)}{\sigma_j^2},
+\end{align*}
 
-allowing us to write our constraint from Eq. \ref{Eq:ChiConstr} as,
+which allows us to write our constraint Eq. \ref{Eq:ChiConstr} more concisely as,
 
 \begin{equation}
 \sum_j \left( \hat{G}_j - a^i \hat{G}^*_{ij} \right)^2 \le c. \label{Eq:ChiConstr2}
@@ -195,10 +195,17 @@ allowing us to write our constraint from Eq. \ref{Eq:ChiConstr} as,
 
 Here we will examine several approaches for solving the above optimization problem,
 
-  * Skilling and Bryan's original MEM algorithm
+  * Skilling and Bryan's original conjugate gradient algorithm as used by Sengupta
   * projected subgradient method
   * mirror descent method
   * logarithmic barrier method
+
+### Skilling's conjugate gradient
+
+Skilling and Bryan's algorithm is a standard conjugate gradient
+technique with some tricks for treating the constraint on $\chi$. The
+interested reader is referred to the paper[@Skilling1984] for further
+details. Sengupta makes minimal changes to this original technique.
 
 ### Projected subgradient method
 
@@ -206,47 +213,115 @@ To employ the projected subgradient method, we will first need a
 projection operator. Expanding the constraint from
 Eq. \ref{Eq:ChiConstr2},
 
-\begin{equation}
+\begin{equation*}
 \sum_j \left( - 2 \hat{G}_j a^i \hat{G}^*_{ij} + (a^i \hat{G}^*_{ij})^2 \right) \le c - \sum_j \hat{G}_j^2.
-\end{equation}
+\end{equation*}
 
-Further juggling terms,
-
-\begin{equation}
-a^i \sum_j -2 \hat{G}_j \hat{G}^*_{ij} + a^i a_k \sum_j (\hat{G}^*)_{ij} (\hat{G}^*)^{jk} \le c - \sum_j \hat{G}_j^2.
-\end{equation}
-
-or, rewriting,
+After further juggling of terms we find,
 
 \begin{equation}
-a^i A_i + a^i a_k B_{ik} \le c - \sum_j \hat{G}_j^2.
+a^i A_i + a^i a_k B_i^k \le c - \sum_j \hat{G}_j^2. \label{Eq:ChiConstr3}
 \end{equation}
+where,
+\begin{align*}
+A_i   & = \sum_j \hat{G}_j \hat{G}^*_{ij} \\
+B_i^k & = \sum_j (\hat{G}^*)_{ij} (\hat{G}^*)^{jk}.
+\end{align*}
 
 As expected, this is manifestly a quadratic constraint. We desire a
 projection operator $\mathcal{P}(\mathbf{a})$ which brings $\mathbf a$
-to a point on the surface quadric $\mathbf{a} B \mathbf{a} + \mathbf{a} A = c$. 
+to a point on the surface quadric $\mathbf{a}^T B \mathbf{a} + \mathbf{a} A = c$. 
 One reasonable choice of projections would be to identify the point
 $\mathbf{a'}$ on this surface that minimizes $\left\Vert \mathbf{a} -
 \mathbf{a'} \right\Vert $. While this could be accomplished by the
 method of Lagrange multipliers, we'd like to avoid excess complexity
 in our projection. Instead, we prefer to use a direct line search in
-the direction of the gradient of our constraint. Again, for simplicity, we ensure only that the constraint is satisfied and make no attempt to ensure optimality (e.g., our projection is not ensured to be on the boundary of our space).
-
-which can be treated using second-order cone programming.
-
-By the reverse triangle inequality,
-
-\begin{equation*}
-\| x-y \| \ge \left| \| x \| - \| y \| \right| ,
-\end{equation*}
-
-we have,
+the direction of the gradient of our constraint. That is, given a step
+factor $\alpha$, we start with,
 
 \begin{equation}
-a
+\mathbf{p}_0 = \nabla_\mathbf{a} \mathbf{a}^T B \mathbf{a} + A \mathbf{a},
+\end{equation}
+
+and perform the iteration,
+
+\begin{equation}
+\mathbf{p}_n = \alpha \mathbf{p}_{n-1}
+\end{equation}
+
+until Eq. \ref{Eq:ChiConstr3} is satisfied. Note that, for simplicity,
+this ensures only that the constraint is satisfied and makes no
+attempt to ensure optimality. Namely, our projection is not ensured to be
+on the boundary of our space, where the optimal projection is known to
+lie.
+
+With this projection operator in hand, we can carry out the typical
+projected subgradient iteration,
+
+\begin{equation*}
+\mathbf{a}_{n+1} = \mathcal{P}\left( \mathbf{a}_n + t_n \nabla_\mathbf{a} \left[ \sum_i (a_n)_i \log (a_n)_i \right] \right).
+\end{equation*}
+
+### Mirror descent method
+
+Following Beck and Taboulle[@Beck2003], we use the mirror descent
+algorithm choosing the auxilary function $\psi(\mathbf{a})$ to be the
+entropy function. However, in addition to the constraint to the unit
+simplex, we also need to enforce our constraint on $\chi^2$. For this
+reason, we define $\psi$ as follows,
+
+\begin{equation}
+\psi(\mathbf{a}) = \sum_j \mathbf{a}_j \log \mathbf{a}_j + I_\Delta(\mathbf{a}) + I_C(\mathbf{a})
+\end{equation}
+
+where $\Delta = \{ x \in \mathbb{R}^n : \sum_j x_j = 1, x \ge 0\}$
+denotes the unit simplex, $C$ denotes the set of solutions satisfying
+Eq. \ref{Eq:ChiConstr3}, and the indicator function $I_A$ for a set
+$A$ is defined as,
+
+\begin{equation}
+I_A(\mathbf{x}) = \left\{
+\begin{array}{lr}
++\infty    &  x \in C \\
+0          & \mathrm{otherwise} 
+\end{array}
+\right.
 \end{equation}
 
 
+### Logarithmic barrier method
+
+Barrier methods are a class of interior point methods which employ a
+penalty term in the objective to discourage violation of the program's
+constraints. As the weight of the penalty is increased, the algorithm
+converges to an optimal, feasible solution.
+
+We consider the case of a logarithmic barrier function, where the
+modified objective is given by,
+
+\begin{equation}
+f(\mathbf{a}) = \sum_i \mathbf{a}_i \log \mathbf{a}_i + \mu \log \left[ \mathbf{a}^T B \mathbf{a} + A \mathbf{a} - c + \sum_j \hat{G}_j^2 \right] .
+\end{equation}
+
+### A naive approach
+
+In addition to the formulation describe above, one can also envision
+an optimization program which puts $\chi^2$ and the entropy $S$ on
+an equal footing. In this case, one could construct an
+objective with a weight parameter $\beta$ to adjust the balance
+between these two terms,
+
+\begin{equation*}
+a
+\end{equation*}
+
+## Test data generation
+
+For our experiments we sampled a number of diffusivities from a two
+component log-normal mixture. We then computed values of the correlation function induced by these species at a number of logarithmically spaced time $\tau$s. To reproduce the imperfection of experimental data, small amplitude Gaussian noise was added to th
+
+## 
+
 \appendix
 
-## Bibliography
+# Bibliography
