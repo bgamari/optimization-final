@@ -44,7 +44,7 @@ main = do
     save "generated" obs
 
     --let iters = take 100 $ testProjSubgrad 1000 gp tauDs 1.01 obs
-    let iters = take 100 $ testBarrier 1000 gp tauDs obs
+    let iters = take 100 $ testBarrier 100 gp tauDs obs
     --let iters = take 100 $ testUnregDescent gp tauDs obs
     forM_ iters $ \i->
         putStrLn $ "chi^2="++show (chiSq obs (diffusionModel gp tauDs i))++"\tS="++show (entropy i)
@@ -129,7 +129,7 @@ testBarrier chiTol gp tauDs obs =
         x0 = fmap (const $ 1/realToFrac (V.length tauDs)) tauDs
         search mu = armijoSearch 0.5 100 0.1 (obj chiTol gp tauDs obs mu)
         go n mu x0 = let xs = steepestDescent (search mu) (obj' mu) x0
-                   in take n xs++go n (2*mu) (head $ drop n xs)
+                   in take n xs++go n (0.5*mu) (head $ drop n xs)
     in go 10 0.1 x0
 
 testUnregDescent :: (RealFloat a) => GlobalParams a -> Species a

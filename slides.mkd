@@ -37,13 +37,17 @@ $$ \chi^2 = \frac{1}{n} \sum_{i=1}^n \frac{(G^*(\tau_i) - G(\tau_i))^2}{\sigma_i
 
 # Barrier method
 
- * Equality constraint required a bit of thought
-
 \begin{align*}
-f(\mathbf{a}) & = \sum_i \mathbf{a}_i \log \mathbf{a}_i + \mu \left( B_{\chi^2} + B_\mathrm{norm} + B_\mathrm{nonneg} \right)
+f(\mathbf{a}) & = \sum_i \mathbf{a}_i \log \mathbf{a}_i + \mu \left( B_{\chi^2} + B_\mathrm{norm} + B_\mathrm{nonneg} \right) \\
 B_{\chi^2} & = \log \left[ \mathbf{a}^T B \mathbf{a} + A \mathbf{a} - c + \sum_j \hat{G}_j^2 \right] \\
-B_\mathrm{nonneg} & = \sum_i \log \mathbf{a}_i
-B_\mathrm{norm} & = \log \frac{1}{\| \mathbf{a} \|_1^2}
+B_\mathrm{nonneg} & = \sum_i \log \mathbf{a}_i \\
+B_\mathrm{norm} & = (\| \mathbf{a} \|_1 - 1 )^2
 \end{align*}
 
+# Barrier method
+
  * Used steepest descent
+ * Need to ensure feasibility of initial configuration
+   * Start with relaxed $c$
+   * Tighten $c$ as iteration progresses
+
