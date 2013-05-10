@@ -231,14 +231,14 @@ B_i^k & = \sum_j (\hat{G}^*)_{ij} (\hat{G}^*)^{jk}.
 
 As expected, this is manifestly a quadratic constraint. We desire a
 projection operator $\mathcal{P}(\mathbf{a})$ which brings $\mathbf a$
-to a point on the surface quadric $\mathbf{a}^T B \mathbf{a} + \mathbf{a} A = c$. 
-One reasonable choice of projections would be to identify the point
-$\mathbf{a'}$ on this surface that minimizes $\left\Vert \mathbf{a} -
-\mathbf{a'} \right\Vert $. While this could be accomplished by the
-method of Lagrange multipliers, we'd like to avoid excess complexity
-in our projection. Instead, we prefer to use a direct line search in
-the direction of the gradient of our constraint. That is, given a step
-factor $\alpha$, we start with,
+to a point on the quadric surface defined by $\mathbf{a}^T B
+\mathbf{a} + \mathbf{a} A = c$.  One reasonable choice of projections
+would be to identify the point $\mathbf{a'}$ on this surface that
+minimizes $\left\Vert \mathbf{a} - \mathbf{a'} \right\Vert $. While
+this could be accomplished by the method of Lagrange multipliers, we'd
+like to avoid excess complexity in our projection. Instead, we prefer
+to use a direct line search in the direction of the gradient of our
+constraint. That is, given a step factor $\alpha$, we start with,
 
 \begin{equation}
 \mathbf{p}_0 = \nabla_\mathbf{a} \mathbf{a}^T B \mathbf{a} + A \mathbf{a},
@@ -308,7 +308,7 @@ f(\mathbf{a}) = \sum_i \mathbf{a}_i \log \mathbf{a}_i + \mu \left( B_{\chi^2} + 
 
 Where the barrier function for the $\chi^2$ and non-negativity constraints are given by,
 \begin{align*}
-B_{\chi^2} & = \log \mathbf{a}^T B \mathbf{a} + A \mathbf{a} - c + \sum_j \hat{G}_j^2 \\
+B_{\chi^2} & = \log \left[ \mathbf{a}^T B \mathbf{a} + A \mathbf{a} - c + \sum_j \hat{G}_j^2 \right] \\
 B_\mathrm{nonneg} & = \sum_i \log \mathbf{a}_i
 \end{align*}
 
@@ -324,14 +324,19 @@ Another (perhaps less principled) approach for the normalization
 constraint is to project each iterate into the space of normalized
 solutions by simply renormalizing. This is the approach used below.
 
-While these barriers (especially $B_\mathrm{norm}$ which is rather
-soft) may differ by orders of magnitude, we tie them together with the
-same $\mu$ for simplicity.
+While these barriers may still differ by orders of magnitude, we tie
+them together with the same $\mu$ for simplicity.
 
+A trust region method such as Newton's method is often a good choice
+for carrying out this optimization due to strong convergence
+properties. That being said, the difficulty of computing the inverse
+Hessian in this particular case makes this option rather
+unappealing. For this reason, we will use steepest descent.
 
-This optimization is then carried out via
-Newton's method. It is important to note that as a matter of
-practicality, this method will require an initial feasible solution.
+It is important to note that, as a matter of practicality, this method
+will require an initial feasible solution. For this reason, we will
+begin the iteration with a weak $\chi^2$ tolerance $c$. This can then
+be tightened as the iteration progresses.
 
 ### A naive approach
 
@@ -348,7 +353,10 @@ terms,
 ## Test data generation
 
 For our experiments we sampled a number of diffusivities from a two
-component log-normal mixture. We then computed values of the correlation function induced by these species at a number of logarithmically spaced time $\tau$s. To reproduce the imperfection of experimental data, small amplitude Gaussian noise was added to th
+component log-normal mixture. We then computed values of the
+correlation function induced by these species at a number of
+logarithmically spaced time $\tau$s. To reproduce the imperfection of
+experimental data, small amplitude Gaussian noise was added to th
 
 # Results
 

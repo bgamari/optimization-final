@@ -1,19 +1,22 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, RecordWildCards #-}
 
-import Debug.Trace
-import GenCorr    
-import Control.Applicative
-import Numeric.AD
-import Numeric.AD.Types (auto)
-import Linear
-import qualified Data.Vector as V                
-import Prelude hiding (sum, mapM)
-import Data.Foldable as Foldable             
-import Data.List hiding (sum)       
-import Data.Traversable                
-import Optimization.LineSearch
-import Optimization.Constrained.ProjectedSubgradient
-import Optimization.LineSearch.MirrorDescent
+import           Control.Applicative
+import           Data.Csv
+import           Data.Foldable as Foldable
+import           Data.List hiding (sum)
+import           Data.Traversable
+import qualified Data.Vector as V
+import           DataUtils
+import           Debug.Trace
+import           GenCorr
+import           Linear
+import           Numeric.AD
+import           Numeric.AD.Types (auto)
+import           Optimization.Constrained.ProjectedSubgradient
+import           Optimization.LineSearch
+import           Optimization.LineSearch.MirrorDescent
+import           Optimization.LineSearch.SteepestDescent
+import           Prelude hiding (sum, mapM)
 
 type Species a = V.Vector a
      
@@ -26,20 +29,28 @@ data Obs a = Obs { oX :: !a   -- ^ Abscissa
                  }
              deriving (Show, Eq, Functor, Foldable, Traversable)
 
+instance ToField a => ToRecord (Obs a) where
+    toRecord (Obs {..}) = record $ map toField [oX, oY, oE]
+
 diffToTauD :: GlobalParams Double -> Diffusivity -> Double
 diffToTauD (GParams {..}) d = beamWaist^2 / 4 / d
 
 main = do
-    let tauDs = V.fromList $ logSpace 1e-10 1e0 5
+    let tauDs = V.fromList $ logSpace 1e-10 1e0 50
         gp = GParams 1 1
-    (g, ds) <- generateCorr 5
+    (g, ds) <- generateCorr 50
     putStrLn $ "tauDs: "++show (map (diffToTauD gp) ds)
     let obs = fmap (\tauD->Obs tauD (g tauD) 0.1) tauDs
-    let iters = take 100 $ testProjSubgrad 10000 gp tauDs 1.01 obs
+    save "generated" obs
+
+    --let iters = take 100 $ testProjSubgrad 1000 gp tauDs 1.01 obs
+    let iters = take 100 $ testBarrier 1000 gp tauDs obs
+    --let iters = take 100 $ testUnregDescent gp tauDs obs
     forM_ iters $ \i->
         putStrLn $ "chi^2="++show (chiSq obs (diffusionModel gp tauDs i))++"\tS="++show (entropy i)
     putStrLn $ "\n\nFit weights:"
     putStrLn $ intercalate "\n" (map show $ V.toList (V.zip tauDs (last iters)))
+    save "fit" $ fmap (\t->(t, diffusionModel gp tauDs (last iters) t)) $ logSpace 1e-10 1e0 500
 
 {-    
 testMirrorDescent :: V.Vector (Obs Double) -> [Double]
@@ -108,8 +119,27 @@ testProjSubgrad chiTol gp tauDs alpha obs =
     in projSubgrad stepSched proj df f x0
 
 testBarrier :: (RealFloat a) => a -> GlobalParams a -> Species a
-            -> a -> V.Vector (Obs a) -> [Species a]
-testBarrier chiTol gp tauDs alpha obs =
-    let obj mu a = sum (entropy a) + mu
-                   * ( log (chiSqConstr chiTol gp tauDs obs a)
-                     + log (normConstr a)
+            -> V.Vector (Obs a) -> [Species a]
+testBarrier chiTol gp tauDs obs =
+    let obj :: (RealFloat a) => a -> GlobalParams a -> Species a
+            -> V.Vector (Obs a) -> a -> Species a -> a
+        obj chiTol gp tauDs obs mu a =
+            entropy a + mu * (log (chiSqConstr chiTol gp tauDs obs a) + sum (fmap log a) + log (recip $ (sum a)^2))
+        obj' mu = grad $ obj (auto chiTol) (auto <$> gp) (auto <$> tauDs) (fmap auto <$> obs) (auto mu)
+        x0 = fmap (const $ 1/realToFrac (V.length tauDs)) tauDs
+        search mu = armijoSearch 0.5 100 0.1 (obj chiTol gp tauDs obs mu)
+        go n mu x0 = let xs = steepestDescent (search mu) (obj' mu) x0
+                   in take n xs++go n (2*mu) (head $ drop n xs)
+    in go 10 0.1 x0
+
+testUnregDescent :: (RealFloat a) => GlobalParams a -> Species a
+            -> V.Vector (Obs a) -> [Species a]
+testUnregDescent gp tauDs obs =
+    let obj :: (RealFloat a) => a -> GlobalParams a -> Species a
+            -> V.Vector (Obs a) -> Species a -> a
+        obj mu gp tauDs obs a = chiSq obs (diffusionModel gp tauDs a) + mu * sum (fmap log a)
+        obj' mu = grad $ obj (auto mu) (auto <$> gp) (auto <$> tauDs) (fmap auto <$> obs)
+        x0 = fmap (const $ 1/realToFrac (V.length tauDs)) tauDs
+        search = armijoSearch 0.5 100 0.1 (obj mu gp tauDs obs)
+        mu = 100
+    in steepestDescent search (obj' mu) x0

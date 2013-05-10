@@ -18,8 +18,11 @@ wxy = 1
 aspect = 1
 
 components :: [(Double, (Diffusivity, Diffusivity))]     
-components = [ (0.5, (10, 1e-4))
-             -- , (0.5, (20, 1e-4))
+components = [ (0.2, (8, 1e-3))
+             , (0.2, (12, 1e-3))
+             , (0.2, (15, 1e-3))
+             , (0.2, (11, 1e-3))
+             , (0.2, (10, 1e-3))
              ]
 
 logNormal :: (Floating a, Distribution Normal a) => a -> a -> RVar a
