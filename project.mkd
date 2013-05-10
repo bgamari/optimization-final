@@ -303,8 +303,35 @@ We consider the case of a logarithmic barrier function, where the
 modified objective is given by,
 
 \begin{equation}
-f(\mathbf{a}) = \sum_i \mathbf{a}_i \log \mathbf{a}_i + \mu \log \left[ \mathbf{a}^T B \mathbf{a} + A \mathbf{a} - c + \sum_j \hat{G}_j^2 \right] .
+f(\mathbf{a}) = \sum_i \mathbf{a}_i \log \mathbf{a}_i + \mu \left( B_{\chi^2} + B_\mathrm{norm} + B_\mathrm{nonneg} \right)
 \end{equation}
+
+Where the barrier function for the $\chi^2$ and non-negativity constraints are given by,
+\begin{align*}
+B_{\chi^2} & = \log \mathbf{a}^T B \mathbf{a} + A \mathbf{a} - c + \sum_j \hat{G}_j^2 \\
+B_\mathrm{nonneg} & = \sum_i \log \mathbf{a}_i
+\end{align*}
+
+To treat the normalization (equality) constraint, we could use a quotient to
+punish deviations in the one-norm away from one,
+
+\begin{equation*}
+B_\mathrm{norm} = \log \frac{1}{\| \mathbf{a} \|_1^2}
+\end{equation*}
+
+Unfortunately, this constraint will be substantially softer than the others.
+Another (perhaps less principled) approach for the normalization
+constraint is to project each iterate into the space of normalized
+solutions by simply renormalizing. This is the approach used below.
+
+While these barriers (especially $B_\mathrm{norm}$ which is rather
+soft) may differ by orders of magnitude, we tie them together with the
+same $\mu$ for simplicity.
+
+
+This optimization is then carried out via
+Newton's method. It is important to note that as a matter of
+practicality, this method will require an initial feasible solution.
 
 ### A naive approach
 
@@ -315,7 +342,7 @@ weight parameter $\beta$ to adjust the balance between these two
 terms,
 
 \begin{equation*}
-a
+\max_\mathbf{a} (1-\beta) S(\mathbf{a}) - \beta \chi^2
 \end{equation*}
 
 ## Test data generation

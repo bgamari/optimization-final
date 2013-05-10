@@ -107,9 +107,9 @@ testProjSubgrad chiTol gp tauDs alpha obs =
                  $ take 1000 $ iterate (alpha *^) $ normalize $ df a
     in projSubgrad stepSched proj df f x0
 
--- Projected subgradient
---   * Projections
---   * Step sizes
--- Mirror descent
---   * Projection?
--- Penalty method
+testBarrier :: (RealFloat a) => a -> GlobalParams a -> Species a
+            -> a -> V.Vector (Obs a) -> [Species a]
+testBarrier chiTol gp tauDs alpha obs =
+    let obj mu a = sum (entropy a) + mu
+                   * ( log (chiSqConstr chiTol gp tauDs obs a)
+                     + log (normConstr a)
