@@ -87,7 +87,7 @@ The parameters $\tau_D$, $N$, $r$, and $l$ are typically learned by
 way of least-squares fit. Here we minimize $\chi^2$, a weighted average of the
 squared residual,
 
-$$ \chi^2 = \frac{1}{n} \sum_i \frac{(G^*(\tau_i) - G(\tau_i))^2}{\sigma_i^2} $$
+$$ \chi^2 = \frac{1}{n} \sum_{i=1}^n \frac{(G^*(\tau_i) - G(\tau_i))^2}{\sigma_i^2} $$
 
 Where $\sigma$ is the standard error of the $G$ estimator. This quantity
 can be estimated under a number of different modelling
@@ -172,6 +172,7 @@ constraint on $\chi^2$,
 \begin{align}
 & \max_{\mathbf{a}} \left[ -\sum_i a_i \log a_i \right] \\
 \mathrm{such~ that~} 
+& a_i \ge 0 \\
 & \sum_i a_i = 1 \\
 & \sum_j \frac{(G(\tau_j) - G^*(\tau_j ~\vert~ \mathbf{a}))^2}{\sigma_j^2} \le c \label{Eq:ChiConstr}
 \end{align}
@@ -249,11 +250,13 @@ and perform the iteration,
 \mathbf{p}_n = \alpha \mathbf{p}_{n-1}
 \end{equation}
 
-until Eq. \ref{Eq:ChiConstr3} is satisfied. Note that, for simplicity,
-this ensures only that the constraint is satisfied and makes no
-attempt to ensure optimality. Namely, our projection is not ensured to be
-on the boundary of our space, where the optimal projection is known to
-lie.
+until Eq. \ref{Eq:ChiConstr3} is satisfied by $\mathbf{a}' =
+\mathbf{a} + \mathbf{p}_n$. Note that, for simplicity, this ensures
+only that the constraint is satisfied and makes no attempt to ensure
+optimality. Namely, our projection is not ensured to be on the
+boundary of our space, where the optimal projection is known to
+lie. Before and after this projection we will scale $\mathbf{a}$ to
+ensure that the normalization constraint is met.
 
 With this projection operator in hand, we can carry out the typical
 projected subgradient iteration,
@@ -322,7 +325,30 @@ component log-normal mixture. We then computed values of the correlation functio
 
 # Results
 
-Hello world.
+## Projected subgradient method
+
+This approach gave a great deal of difficulty. Unfortunately,
+convergence was extremely sensitive to the parameters. Frequently the
+projection would enter loops wherein the weights would all reach zero.
+
+The iteration was generally run with a constant step size as this
+provided the most reliable convergence. Unfortunately, tuning this
+parameter was extremely unforgiving as small values would result in
+oscillations while large values would simply not converge.
+
+Given the mode of failure, it seems that the crude projection operator
+used here is to blame. A more justified approach minimizing the
+projected distance under a constraint holding the projection on the
+surface of the quadric might be more effective. That being said, given
+that projected subgradient is best used when the projection is easy to
+compute (a condition which even the line search doesn't satisfy), this
+is likely a sign that this approach is simply not suited for this
+problem.
+
+## Logarithmic barrier method
+
+
+
 
 \appendix
 
