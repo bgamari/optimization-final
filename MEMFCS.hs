@@ -35,6 +35,12 @@ instance ToField a => ToRecord (Obs a) where
 diffToTauD :: GlobalParams Double -> Diffusivity -> Double
 diffToTauD (GParams {..}) d = beamWaist^2 / 4 / d
 
+saveFit :: GlobalParams Double -> Species Double -> FilePath -> Species Double -> IO ()
+saveFit gp tauDs fname weights =         
+    save fname
+    $ fmap (\t->(t, diffusionModel gp tauDs weights t))
+    $ logSpace 1e-10 1e0 500
+
 main = do
     let tauDs = V.fromList $ logSpace 1e-10 1e0 50
         gp = GParams 1 1
@@ -44,13 +50,15 @@ main = do
     save "generated" obs
 
     --let iters = take 100 $ testProjSubgrad 1000 gp tauDs 1.01 obs
-    let iters = take 100 $ testBarrier 100 gp tauDs obs
-    --let iters = take 100 $ testUnregDescent gp tauDs obs
+    --let iters = take 100 $ testBarrier 1e4 gp tauDs obs
+    let iters = take 1000 $ testUnregDescent gp tauDs obs
     forM_ iters $ \i->
-        putStrLn $ "chi^2="++show (chiSq obs (diffusionModel gp tauDs i))++"\tS="++show (entropy i)
+        putStrLn $ "chi^2= "++show (chiSq obs (diffusionModel gp tauDs i))
+            ++"\tS= "++show (entropy i)
+            ++"\tnorm1= "++show (sum i)
     putStrLn $ "\n\nFit weights:"
     putStrLn $ intercalate "\n" (map show $ V.toList (V.zip tauDs (last iters)))
-    save "fit" $ fmap (\t->(t, diffusionModel gp tauDs (last iters) t)) $ logSpace 1e-10 1e0 500
+    forM_ (zip [0..] iters) $ \(i,weights)->saveFit gp tauDs ("data/fit-"++show i) weights
 
 {-    
 testMirrorDescent :: V.Vector (Obs Double) -> [Double]
@@ -105,6 +113,9 @@ normConstrSatisfied weights = nearZero $ normConstr weights
 
 tr x = traceShow x x           
             
+normalizeL1 :: (Fractional a, Functor f, Foldable f) => f a -> f a   
+normalizeL1 x = x ^/ sum x
+
 testProjSubgrad :: (Show a, Epsilon a, RealFloat a) => a -> GlobalParams a -> Species a 
                 -> a -> V.Vector (Obs a) -> [Species a]
 testProjSubgrad chiTol gp tauDs alpha obs =
@@ -114,32 +125,40 @@ testProjSubgrad chiTol gp tauDs alpha obs =
         df = grad $ chiSqConstr (auto chiTol) (auto <$> gp) (auto <$> tauDs) (fmap (fmap auto) obs)
         proj a = head $ dropWhile (not . chiSqConstrSatisfied chiTol gp tauDs obs)
                  -- $ map (\f->traceShow (chiSqConstr 0 gp tauDs obs f, V.take 2 f) f)
-                 $ map (normalize . fmap (max 0) . (a ^+^))
-                 $ take 1000 $ iterate (alpha *^) $ normalize $ df a
+                 $ map (normalizeL1 . fmap (max 0) . (a ^+^))
+                 $ take 1000 $ iterate (alpha *^) $ normalizeL1 $ df a
     in projSubgrad stepSched proj df f x0
 
-testBarrier :: (RealFloat a) => a -> GlobalParams a -> Species a
+testBarrier :: (Show a, RealFloat a) => a -> GlobalParams a -> Species a
             -> V.Vector (Obs a) -> [Species a]
 testBarrier chiTol gp tauDs obs =
-    let obj :: (RealFloat a) => a -> GlobalParams a -> Species a
+    let obj :: (Show a, RealFloat a) => a -> GlobalParams a -> Species a
             -> V.Vector (Obs a) -> a -> Species a -> a
         obj chiTol gp tauDs obs mu a =
-            entropy a + mu * (log (chiSqConstr chiTol gp tauDs obs a) + sum (fmap log a) + log (recip $ (sum a)^2))
-        obj' mu = grad $ obj (auto chiTol) (auto <$> gp) (auto <$> tauDs) (fmap auto <$> obs) (auto mu)
+            entropy a - mu * log (chiSqConstr chiTol gp tauDs obs a) - mu * sum (fmap log a) + 1/mu * (sum a - 1)^2
+        obj' chiTol mu = grad $ obj (auto chiTol) (auto <$> gp) (auto <$> tauDs) (fmap auto <$> obs) (auto mu)
         x0 = fmap (const $ 1/realToFrac (V.length tauDs)) tauDs
-        search mu = armijoSearch 0.5 100 0.1 (obj chiTol gp tauDs obs mu)
-        go n mu x0 = let xs = steepestDescent (search mu) (obj' mu) x0
-                   in take n xs++go n (0.5*mu) (head $ drop n xs)
-    in go 10 0.1 x0
-
+        search chiTol mu = armijoSearch 0.1 100 0.1 (obj chiTol gp tauDs obs mu)
+        mu0 = 100
+        chiTols = scanl (\a f->f a) 2e5
+                  $ take 10000 (cycle $ (/2):replicate 10 id) ++ repeat id
+        mus = scanl (\a f->f a) mu0
+              $ take 10000 (cycle $ (/2):replicate 1000 id) ++ repeat id
+    in runBlock 40 (\(chiTol,mu)->traceShow (chiTol, mu) $ steepestDescent (search chiTol mu) (obj' chiTol mu)) (zip chiTols mus) x0
+    
 testUnregDescent :: (RealFloat a) => GlobalParams a -> Species a
             -> V.Vector (Obs a) -> [Species a]
 testUnregDescent gp tauDs obs =
     let obj :: (RealFloat a) => a -> GlobalParams a -> Species a
             -> V.Vector (Obs a) -> Species a -> a
-        obj mu gp tauDs obs a = chiSq obs (diffusionModel gp tauDs a) + mu * sum (fmap log a)
+        obj mu gp tauDs obs a = chiSq obs (diffusionModel gp tauDs a) - mu * sum (fmap log a) + 1/mu * (sum a - 1)^8
         obj' mu = grad $ obj (auto mu) (auto <$> gp) (auto <$> tauDs) (fmap auto <$> obs)
         x0 = fmap (const $ 1/realToFrac (V.length tauDs)) tauDs
-        search = armijoSearch 0.5 100 0.1 (obj mu gp tauDs obs)
-        mu = 100
-    in steepestDescent search (obj' mu) x0
+        search mu = armijoSearch 0.1 100 0.1 (obj mu gp tauDs obs)
+        mu0 = 1
+    in runBlock 40 (\mu->steepestDescent (search mu) (obj' mu)) (iterate (0.5*) mu0) x0
+
+runBlock :: Int -> (a -> b -> [b]) -> [a] -> b -> [b]
+runBlock n f (x:xs) y0 =
+    let ys = f x y0
+    in take n ys ++ runBlock n f xs (head $ drop n ys)

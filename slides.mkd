@@ -50,4 +50,6 @@ B_\mathrm{norm} & = (\| \mathbf{a} \|_1 - 1 )^2
  * Need to ensure feasibility of initial configuration
    * Start with relaxed $c$
    * Tighten $c$ as iteration progresses
+ * Convergence was quite unreliable
 
+#

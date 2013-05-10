@@ -94,7 +94,7 @@ can be estimated under a number of different modelling
 assumptions[@Wohland1986, @Schatzel1990, @Schatzel1991, @Gamari2013, @Culbertson2007, @Sarrarian2003]. The
 most common treatment of the error is due to Koppel[@Koppel1974] and
 appeals to an assumption of temporal independence (an admittedly
-suspicous assumption for an experiment looking at temporal
+suspicious assumption for an experiment looking at temporal
 correlations).
 
 For reasons of convenience and ubiquity, the
@@ -132,7 +132,7 @@ Or in the case of the diffusion model given in Eq. \ref{Eq:3dDiff},
 $$ G(\tau) = \sum_i a_i \left(\frac{1}{1 + \tau / \tau_{D_i}}\right) \left(\frac{1}{1 + (r/l)^2 (\tau/\tau_{D_i})}\right) $$
 
 Where $a_i$ are the relative abundances of the two species. In the
-common case of a continuuous spectrum of diffusivities we can write
+common case of a continuous spectrum of diffusivities we can write
 this sum as an integral, which for computational ease we can rewrite as a
 sum of appropriately many discrete contributions.
 
@@ -166,7 +166,7 @@ We are given an observed correlation function $G(\tau)$. Given a set
 of diffusion times $\{\tau_{D_i}\}$ which we might expect to see in
 the system, we want to learn a set of component weights $\mathbf{a}
 \ge 0$ and auxiliary model parameters. We demand that our weight
-distribution maximizes entropy $S$ while satifying an inequality
+distribution maximizes entropy $S$ while satisfying an inequality
 constraint on $\chi^2$,
 
 \begin{align}
@@ -268,7 +268,7 @@ projected subgradient iteration,
 ### Mirror descent method
 
 Following Beck and Taboulle[@Beck2003], we use the mirror descent
-algorithm choosing the auxilary function $\psi(\mathbf{a})$ to be the
+algorithm choosing the auxiliary function $\psi(\mathbf{a})$ to be the
 entropy function. However, in addition to the constraint to the unit
 simplex, we also need to enforce our constraint on $\chi^2$. For this
 reason, we define $\psi$ as follows,
@@ -303,7 +303,7 @@ We consider the case of a logarithmic barrier function, where the
 modified objective is given by,
 
 \begin{equation}
-f(\mathbf{a}) = \sum_i \mathbf{a}_i \log \mathbf{a}_i + \mu \left( B_{\chi^2} + B_\mathrm{norm} + B_\mathrm{nonneg} \right)
+f(\mathbf{a}) = \sum_i \mathbf{a}_i \log \mathbf{a}_i - \mu \left( B_{\chi^2} + B_\mathrm{norm} + B_\mathrm{nonneg} \right)
 \end{equation}
 
 Where the barrier function for the $\chi^2$ and non-negativity constraints are given by,
@@ -322,10 +322,13 @@ B_\mathrm{norm} = \log \frac{1}{\| \mathbf{a} \|_1^2}
 Unfortunately, this constraint will be substantially softer than the others.
 Another (perhaps less principled) approach for the normalization
 constraint is to project each iterate into the space of normalized
-solutions by simply renormalizing. This is the approach used below.
+solutions by simply renormalizing.
 
-While these barriers may still differ by orders of magnitude, we tie
-them together with the same $\mu$ for simplicity.
+A potential complication here is the difference behavior between the
+logarithmic and quadratic barriers. Moreover, there could be
+differences in order of magnitude even between the non-negativity and
+$\chi^2$ constraints. We will ignore these concerns for now, weighing
+each of the barriers by $\mu$ for simplicity.
 
 A trust region method such as Newton's method is often a good choice
 for carrying out this optimization due to strong convergence
@@ -356,14 +359,21 @@ For our experiments we sampled a number of diffusivities from a two
 component log-normal mixture. We then computed values of the
 correlation function induced by these species at a number of
 logarithmically spaced time $\tau$s. To reproduce the imperfection of
-experimental data, small amplitude Gaussian noise was added to th
+experimental data, small amplitude Gaussian noise was added to the $G$
+samples.
 
 # Results
+
+While several approaches were implemented, they were found to be
+extremely unstable. While they gave results that sometimes agreed with
+the parameters used for generation, this were not nearly reliable
+enough to claim success.  This precluded any systematic study of their
+convergence. Below I include some notes on why this might be the case.
 
 ## Projected subgradient method
 
 This approach gave a great deal of difficulty. Unfortunately,
-convergence was extremely sensitive to the parameters. Frequently the
+convergence was extremely sensitive to step size. Frequently the
 projection would enter loops wherein the weights would all reach zero.
 
 The iteration was generally run with a constant step size as this
@@ -382,7 +392,13 @@ problem.
 
 ## Logarithmic barrier method
 
-
+This method was found to be extremely unforgiving to the difference in
+order of magnitude between the normalization barrier and the
+$\chi^2$. The second order dependence of $B_\mathrm{norm}$ was found
+to be too soft, allowing the algorithm to trade off violation of
+normalization for a better $\chi^2$, even in the face of very small
+$\mu$. When the normalization barrier was changed to an eighth order
+dependence, this violation was less pronounced but still significant.
 
 
 \appendix
